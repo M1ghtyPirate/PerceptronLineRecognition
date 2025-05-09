@@ -1,5 +1,6 @@
 from math import ceil
 import os
+from random import random
 import re
 from typing import Callable
 from PIL import Image
@@ -70,11 +71,13 @@ def getPerceptron(trainingSet: tuple[list[tuple[list[int], bool]], tuple[str, st
     '''
     if max(len(p[0]) for p in trainingSet[0]) != min(len(p[0]) for p in trainingSet[0]) or learningRate < 0 or learningRate > 1 or maxCycles < 0:
         raise ValueError("Переданы некорректные аргументы для формирования весов и смещения.")
-    print(f'Формирование весов и смещения' + '.' if maxCycles == 0 else f' с ограничением в <{maxCycles}> циклов.')
+    print(f'Формирование весов и смещения' + ('.' if maxCycles == 0 else f' с ограничением в <{maxCycles}> циклов.'))
     patternCount = len(trainingSet[0])
     patternLength = len(trainingSet[0][0][0])
     weights = [0 for i in range(patternLength)]
+    #weights = [random() * 2 - 1 for i in range(patternLength)]
     bias = 0
+    #bias = random() - 0.5
     maxCycles = maxCycles if maxCycles > 0 else -1
     currentCycle = 0
     reportPercent = 0
@@ -85,7 +88,7 @@ def getPerceptron(trainingSet: tuple[list[tuple[list[int], bool]], tuple[str, st
             s = sum(list(map(lambda j: pattern[0][j] * weights[j], range(patternLength)))) + bias
             y = activationFunction(s)
             t = pattern[1]
-            dy = (0 if y == t else (1 if (not y and t) else -1)) * learningRate
+            dy = (t - y) * learningRate
             for j in range(patternLength):
                 dw = pattern[0][j] * dy
                 weights[j] += dw
@@ -127,8 +130,9 @@ def recognizePattern(pattern: list[int], perceptron: tuple[list[int], float, Cal
     return result
 
 trainingImageSet = getFiles("TrainingSet", "^.*\.bmp$")
+#trainingImageSet = getFiles("RecognitionSet", "^.*\.bmp$")
 recognitionImageSet = getFiles("RecognitionSet", "^.*\.bmp$")
-# recognitionImageSet = getFiles("TrainingSet", "^.*\.bmp$")
+#recognitionImageSet = getFiles("TrainingSet", "^.*\.bmp$")
 print(f'Сет обучения:')
 trainingSet = getTrainingSet(trainingImageSet)
 for i in range(len(trainingImageSet)):
@@ -141,8 +145,12 @@ print(f'Веса перцептрона со смещением <{perceptron[1]}
 print(perceptron[0])
 print()
 print(f'Сет распознавания:')
+correctPredictions = 0
 for file in recognitionImageSet:
     print()
     print(file)
     recognitionResult = recognizePattern(getImagePattern(Image.open(file)), perceptron)
     print(f'Результат распознавания: <{recognitionResult}>')
+    if recognitionResult[1] == file.split("\\")[-1].split("_")[0]:
+        correctPredictions += 1
+print(f'Точность распознавания: {correctPredictions}/{len(recognitionImageSet)} - {round(correctPredictions / len(recognitionImageSet), 2) * 100}%')
